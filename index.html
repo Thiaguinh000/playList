@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Minha Playlist</title>
+</head>
+<body>
+  <h1>🎶 Minha Playlist</h1>
+
+  <!-- Formulário para adicionar nova música -->
+  <form id="form-musica">
+    <input type="text" id="nome" placeholder="Nome da música" required>
+    <input type="text" id="artista" placeholder="Artista" required>
+    <input type="url" id="link" placeholder="Link da música" required>
+    <button type="submit">Adicionar Música</button>
+  </form>
+
+  <!-- Lista onde as músicas serão exibidas -->
+  <ul id="playlist"></ul>
+
+  <script src="playlist.js"></script>
+</body>
+</html>
