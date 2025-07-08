@@ -1,23 +1,297 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <title>Minha Playlist</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Minhas Playlists</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(to right, #1e1e2f, #2b2b3c);
+      margin: 0;
+      padding: 20px;
+      color: #f0f0f0;
+    }
+    h1, h2 {
+      text-align: center;
+      color: #ff4c60;
+      text-shadow: 1px 1px 2px #000;
+    }
+    form, .playlist, #login-form, #playlist-select {
+      max-width: 600px;
+      margin: 20px auto;
+      background: #2d2d3f;
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.4);
+      border: 1px solid #444;
+    }
+    input, button, textarea, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 10px;
+      border: none;
+      font-size: 16px;
+      outline: none;
+    }
+    input, textarea, select {
+      background-color: #3b3b4f;
+      color: #f0f0f0;
+      border: 1px solid #666;
+    }
+    button {
+      background-color: #ff4c60;
+      color: white;
+      font-weight: bold;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background-color: #ff1c3d;
+    }
+    .music {
+      border-bottom: 1px solid #444;
+      padding: 15px 0;
+    }
+    .music:last-child {
+      border-bottom: none;
+    }
+    .music-info {
+      margin-bottom: 8px;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 5px;
+    }
+    audio {
+      margin-top: 5px;
+      width: 100%;
+    }
+    .favorite {
+      color: gold;
+    }
+    #user-info {
+      text-align: center;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
-  <h1>🎶 Minha Playlist</h1>
+  <h1>🎧 Minhas Playlists</h1>
 
-  <!-- Formulário para adicionar nova música -->
-  <form id="form-musica">
-    <input type="text" id="nome" placeholder="Nome da música" required>
-    <input type="text" id="artista" placeholder="Artista" required>
-    <input type="url" id="link" placeholder="Link da música" required>
-    <button type="submit">Adicionar Música</button>
-  </form>
+  <div id="login-form">
+    <h2>Entrar</h2>
+    <input type="text" id="username" placeholder="Nome de usuário">
+    <button onclick="login()">Entrar</button>
+  </div>
 
-  <!-- Lista onde as músicas serão exibidas -->
-  <ul id="playlist"></ul>
+  <div id="app" style="display:none;">
+    <div id="user-info"></div>
 
-  <script src="playlist.js"></script>
+    <div id="playlist-select">
+      <h2>🎼 Selecionar ou Criar Playlist</h2>
+      <select id="playlistDropdown" onchange="changePlaylist()"></select>
+      <input type="text" id="newPlaylistName" placeholder="Nova playlist...">
+      <button onclick="createPlaylist()">Criar Playlist</button>
+      <select id="sortSelect" onchange="renderPlaylist()">
+        <option value="default">Ordem de Cadastro</option>
+        <option value="name">Nome (A–Z)</option>
+        <option value="date">Data de Lançamento</option>
+      </select>
+    </div>
+
+    <form id="music-form">
+      <input type="text" id="title" placeholder="Título da música" required>
+      <input type="text" id="artist" placeholder="Artista" required>
+      <input type="text" id="url" placeholder="URL do áudio (.mp3 ou similar)">
+      <input type="date" id="releaseDate" placeholder="Data de lançamento (opcional)">
+      <textarea id="bio" placeholder="Bio ou descrição da música (opcional)"></textarea>
+      <button type="submit">Salvar Música</button>
+    </form>
+
+    <div class="playlist" id="playlist"></div>
+  </div>
+
+  <script>
+    const form = document.getElementById('music-form');
+    const playlist = document.getElementById('playlist');
+    const titleInput = document.getElementById('title');
+    const artistInput = document.getElementById('artist');
+    const urlInput = document.getElementById('url');
+    const bioInput = document.getElementById('bio');
+    const releaseDateInput = document.getElementById('releaseDate');
+    const userInfo = document.getElementById('user-info');
+    const playlistDropdown = document.getElementById('playlistDropdown');
+    const newPlaylistName = document.getElementById('newPlaylistName');
+
+    let currentUser = null;
+    let currentPlaylist = null;
+    let users = {};
+    let editingIndex = null;
+
+    function login() {
+      const username = document.getElementById('username').value.trim();
+      if (!username) return alert("Digite seu nome!");
+
+      currentUser = username;
+      loadUserData();
+
+      document.getElementById('login-form').style.display = "none";
+      document.getElementById('app').style.display = "block";
+      userInfo.innerText = `Usuário: ${currentUser}`;
+    }
+
+    function getUserKey() {
+      return `user_${currentUser}`;
+    }
+
+    function loadUserData() {
+      const stored = localStorage.getItem(getUserKey());
+      users = stored ? JSON.parse(stored) : { playlists: {} };
+
+      if (Object.keys(users.playlists).length === 0) {
+        users.playlists["Minha Playlist"] = [];
+      }
+
+      currentPlaylist = Object.keys(users.playlists)[0];
+      updatePlaylistDropdown();
+      renderPlaylist();
+    }
+
+    function saveUserData() {
+      localStorage.setItem(getUserKey(), JSON.stringify(users));
+    }
+
+    function updatePlaylistDropdown() {
+      playlistDropdown.innerHTML = '';
+      for (const name in users.playlists) {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        if (name === currentPlaylist) option.selected = true;
+        playlistDropdown.appendChild(option);
+      }
+    }
+
+    function createPlaylist() {
+      const name = newPlaylistName.value.trim();
+      if (!name) return;
+
+      if (users.playlists[name]) {
+        alert("Essa playlist já existe!");
+        return;
+      }
+
+      users.playlists[name] = [];
+      currentPlaylist = name;
+      newPlaylistName.value = '';
+      saveUserData();
+      updatePlaylistDropdown();
+      renderPlaylist();
+    }
+
+    function changePlaylist() {
+      currentPlaylist = playlistDropdown.value;
+      renderPlaylist();
+    }
+
+    function renderPlaylist() {
+      playlist.innerHTML = '';
+      let musics = users.playlists[currentPlaylist] || [];
+
+      const sortOption = document.getElementById('sortSelect').value;
+
+      const favs = musics.filter(m => m.favorite);
+      const nonFavs = musics.filter(m => !m.favorite);
+
+      const sortFunc = (a, b) => {
+        if (sortOption === "name") {
+          return a.title.localeCompare(b.title);
+        } else if (sortOption === "date") {
+          return (a.releaseDate || "").localeCompare(b.releaseDate || "");
+        } else {
+          return 0;
+        }
+      };
+
+      favs.sort(sortFunc);
+      nonFavs.sort(sortFunc);
+
+      const sortedMusics = [...favs, ...nonFavs];
+
+      sortedMusics.forEach((music, index) => {
+        const div = document.createElement('div');
+        div.className = 'music';
+
+        div.innerHTML = `
+          <div class="music-info">
+            <strong class="${music.favorite ? 'favorite' : ''}">${music.title}</strong> - ${music.artist}<br>
+            ${music.releaseDate ? `🗓 ${music.releaseDate}<br>` : ''}
+            ${music.bio ? `<em>${music.bio}</em><br>` : ''}
+            ${music.url ? `<audio controls src="${music.url}"></audio>` : ''}
+          </div>
+          <div class="actions">
+            <button onclick="editMusic(${musics.indexOf(music)})">Editar</button>
+            <button onclick="deleteMusic(${musics.indexOf(music)})">Excluir</button>
+            <button onclick="toggleFavorite(${musics.indexOf(music)})">${music.favorite ? '★' : '☆'} Favorito</button>
+          </div>
+        `;
+        playlist.appendChild(div);
+      });
+    }
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const title = titleInput.value.trim();
+      const artist = artistInput.value.trim();
+      const url = urlInput.value.trim();
+      const bio = bioInput.value.trim();
+      const releaseDate = releaseDateInput.value.trim();
+
+      if (!title || !artist) return;
+
+      const newMusic = { title, artist, url, bio, releaseDate, favorite: false };
+      const musics = users.playlists[currentPlaylist];
+
+      if (editingIndex !== null) {
+        musics[editingIndex] = newMusic;
+        editingIndex = null;
+      } else {
+        musics.push(newMusic);
+      }
+
+      form.reset();
+      saveUserData();
+      renderPlaylist();
+    });
+
+    window.editMusic = function(index) {
+      const m = users.playlists[currentPlaylist][index];
+      titleInput.value = m.title;
+      artistInput.value = m.artist;
+      urlInput.value = m.url;
+      bioInput.value = m.bio;
+      releaseDateInput.value = m.releaseDate || '';
+      editingIndex = index;
+    }
+
+    window.deleteMusic = function(index) {
+      if (confirm("Excluir esta música?")) {
+        users.playlists[currentPlaylist].splice(index, 1);
+        saveUserData();
+        renderPlaylist();
+      }
+    }
+
+    window.toggleFavorite = function(index) {
+      const m = users.playlists[currentPlaylist][index];
+      m.favorite = !m.favorite;
+      saveUserData();
+      renderPlaylist();
+    }
+  </script>
 </body>
 </html>
